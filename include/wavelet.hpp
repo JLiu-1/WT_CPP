@@ -9,8 +9,57 @@ extern "C" {
 #include "pywt_c/wavelets.h"
 }
 
+// Convert wavelet name string to (WAVELET_NAME, order)
+inline std::pair<WAVELET_NAME,unsigned int>
+wname_to_code(const std::string& s) {
+    std::string name = s;
+    std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+    if (name == "haar") {
+        return {HAAR, 0};
+    } else if (name.rfind("db", 0) == 0) {
+        return {DB, static_cast<unsigned>(std::stoi(name.substr(2)))};
+    } else if (name.rfind("sym", 0) == 0) {
+        return {SYM, static_cast<unsigned>(std::stoi(name.substr(3)))};
+    } else if (name.rfind("coif", 0) == 0) {
+        return {COIF, static_cast<unsigned>(std::stoi(name.substr(4)))};
+    } else if (name.rfind("bior", 0) == 0) {
+        // biorthogonal: take integer part before dot
+        auto pos = name.find('.');
+        unsigned num = std::stoi(name.substr(4, pos-4));
+        return {BIOR, num};
+    } else if (name.rfind("rbio", 0) == 0) {
+        auto pos = name.find('.');
+        unsigned num = std::stoi(name.substr(4, pos-4));
+        return {RBIO, num};
+    } else if (name == "dmey") {
+        return {DMEY, 0};
+    } else if (name.rfind("gaus", 0) == 0) {
+        return {GAUS, static_cast<unsigned>(std::stoi(name.substr(4)))};
+    } else if (name == "mexh") {
+        return {MEXH, 0};
+    } else if (name == "morl") {
+        return {MORL, 0};
+    } else if (name.rfind("cgau", 0) == 0) {
+        return {CGAU, static_cast<unsigned>(std::stoi(name.substr(4)))};
+    } else if (name.rfind("shan", 0) == 0) {
+        return {SHAN, static_cast<unsigned>(std::stoi(name.substr(4)))};
+    } else if (name.rfind("fbsp", 0) == 0) {
+        return {FBSP, static_cast<unsigned>(std::stoi(name.substr(4)))};
+    } else if (name.rfind("cmor", 0) == 0) {
+        // 'cmor' continuous wavelet not supported here
+        throw std::invalid_argument("Continuous wavelet '" + s + "' not supported.");
+    }
+    throw std::invalid_argument("Unknown wavelet name: " + s);
+}
+
+inline bool is_discrete_wav_enum(WAVELET_NAME name) {
+    return is_discrete_wavelet(name);
+}
+
 // Helper: copy C-array to std::vector<double>
 inline void copy_c_array_to_vector(const double* src, size_t len, std::vector<double>& dst) {
+    dst.assign(src, src + len);
+}(const double* src, size_t len, std::vector<double>& dst) {
     dst.assign(src, src + len);
 }
 
@@ -20,7 +69,7 @@ public:
     explicit Wavelet(const std::string& name)
       : name_(to_lower(name)), w_(nullptr) {
         auto code = wname_to_code(name_.c_str());
-        if (!is_discrete_wav(code.first))
+        if (!is_discrete_wavelet(code.first))
             throw std::invalid_argument("Wavelet '" + name_ + "' is not discrete");
         w_ = discrete_wavelet(code.first, code.second);
         if (!w_) throw std::invalid_argument("Invalid wavelet name '" + name_ + "'");
