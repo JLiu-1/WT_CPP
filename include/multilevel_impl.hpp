@@ -215,10 +215,14 @@ wavedecn(const NDArray<T>& data,
          int level,
          const std::vector<int>& axes)
 {
+    std::cout<<"p1"<<std::endl;
     auto [real_axes, axes_shapes, N] = prep_axes_wavedecn(data.shape(), axes);
+    std::cout<<"p2"<<std::endl;
     auto wavelets = wavelets_per_axis(w, real_axes);
+    std::cout<<"p3"<<std::endl;
     int max_level = (level < 0 ? static_cast<int>(axes_shapes.size()) : level);
     std::vector<DetailMap<T>> details;
+    std::cout<<"p4"<<std::endl;
     NDArray<T> approx = data;
     for (int i = 0; i < max_level; ++i) {
         auto coeffs = dwtn(approx, w, mode, real_axes);
@@ -227,11 +231,13 @@ wavedecn(const NDArray<T>& data,
         coeffs.erase(akey);
         details.push_back(std::move(coeffs));
     }
+    std::cout<<"p5"<<std::endl;
     CoeffList<T> out;
     out.emplace_back(approx);
     for (auto& d : details)
         out.emplace_back(d);
     std::reverse(out.begin(), out.end());
+    std::cout<<"p6"<<std::endl;
     return out;
 }
 
