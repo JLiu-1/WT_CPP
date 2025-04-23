@@ -36,7 +36,48 @@ NDArray<T> pad_signal(const NDArray<T>& data,
                       int pad_width,
                       const std::string& mode,
                       int axis) {
-    // ... (原有实现保持不变) ...
+    int ndim = data.ndim();
+    auto shape = data.shape();
+    if (axis < 0) axis += ndim;
+    std::vector<std::size_t> new_shape = shape;
+    new_shape[axis] += 2 * pad_width;
+    NDArray<T> out(new_shape);
+    auto ostr = out.strides();
+    auto istr = data.strides();
+    std::vector<std::size_t> idx(ndim), orig(ndim);
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        std::size_t r = i;
+        for (int d = 0; d < ndim; ++d) {
+            idx[d] = r / ostr[d];
+            r %= ostr[d];
+        }
+        int pos = int(idx[axis]) - pad_width;
+        int L = int(shape[axis]);
+        int p;
+        if (mode == "symmetric") {
+            if      (pos < 0)  p = -pos - 1;
+            else if (pos >= L) p = 2*L - pos - 1;
+            else               p = pos;
+        } else if (mode == "periodic") {
+            p = ((pos % L) + L) % L;
+        } else if (mode == "constant") {
+            p = std::clamp(pos, 0, L-1);
+        } else if (mode == "zero") {
+            if (pos < 0 || pos >= L) {
+                out.data()[i] = T(0);
+                continue;
+            }
+            p = pos;
+        } else {
+            throw std::invalid_argument("Unsupported pad mode");
+        }
+        for (int d = 0; d < ndim; ++d)
+            orig[d] = (d == axis ? std::size_t(p) : idx[d]);
+        auto off = std::inner_product(
+            orig.begin(), orig.end(), istr.begin(), std::size_t(0));
+        out.data()[i] = data.data()[off];
+    }
+    return out;
 }
 
 // --------------------------------------
@@ -59,7 +100,8 @@ NDArray<T> convolve_nd(const NDArray<T>& data,
     for (std::size_t i = 0; i < out.size(); ++i) {
         std::size_t r = i;
         for (int d = 0; d < ndim; ++d) {
-            idx[d] = r / ostr[d]; r %= ostr[d];
+            idx[d] = r / ostr[d];
+            r %= ostr[d];
         }
         T sum = T(0);
         for (int k = 0; k < L; ++k) {
@@ -89,7 +131,27 @@ NDArray<T> convolve_nd(const NDArray<T>& data,
 // --------------------------------------
 template<typename T>
 NDArray<T> downsample(const NDArray<T>& data, int axis) {
-    // ... (原有实现保持不变) ...
+    int ndim = data.ndim();
+    auto shape = data.shape();
+    std::vector<std::size_t> out_shape = shape;
+    out_shape[axis] = (shape[axis] + 1) / 2;
+    NDArray<T> out(out_shape);
+    auto istr = data.strides();
+    auto ostr = out.strides();
+    std::vector<std::size_t> idx(ndim), in_idx(ndim);
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        std::size_t r = i;
+        for (int d = 0; d < ndim; ++d) {
+            idx[d] = r / ostr[d];
+            r %= ostr[d];
+        }
+        in_idx = idx;
+        in_idx[axis] = idx[axis] * 2;
+        auto off = std::inner_product(
+            in_idx.begin(), in_idx.end(), istr.begin(), std::size_t(0));
+        out.data()[i] = data.data()[off];
+    }
+    return out;
 }
 
 // --------------------------------------
@@ -97,7 +159,31 @@ NDArray<T> downsample(const NDArray<T>& data, int axis) {
 // --------------------------------------
 template<typename T>
 NDArray<T> upsample(const NDArray<T>& data, int axis) {
-    // ... (原有实现保持不变) ...
+    int ndim = data.ndim();
+    auto shape = data.shape();
+    std::vector<std::size_t> out_shape = shape;
+    out_shape[axis] = shape[axis] * 2;
+    NDArray<T> out(out_shape);
+    auto istr = data.strides();
+    auto ostr = out.strides();
+    std::vector<std::size_t> idx(ndim), in_idx(ndim);
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        std::size_t r = i;
+        for (int d = 0; d < ndim; ++d) {
+            idx[d] = r / ostr[d];
+            r %= ostr[d];
+        }
+        if (idx[axis] & 1) {
+            out.data()[i] = T(0);
+        } else {
+            in_idx = idx;
+            in_idx[axis] = idx[axis] / 2;
+            auto off = std::inner_product(
+                in_idx.begin(), in_idx.end(), istr.begin(), std::size_t(0));
+            out.data()[i] = data.data()[off];
+        }
+    }
+    return out;
 }
 
 // --------------------------------------
@@ -108,7 +194,26 @@ NDArray<T> trim_signal(const NDArray<T>& data,
                        int trim_width,
                        const std::string& /*mode*/,
                        int axis) {
-    // ... (原有实现保持不变) ...
+    int ndim = data.ndim();
+    auto shape = data.shape();
+    std::vector<std::size_t> begin(ndim, 0), end = shape;
+    end[axis] = shape[axis] - trim_width;
+    NDArray<T> out(end);
+    auto istr = data.strides();
+    auto ostr = out.strides();
+    std::vector<std::size_t> idx(ndim), in_idx(ndim);
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        std::size_t r = i;
+        for (int d = 0; d < ndim; ++d) {
+            idx[d] = r / ostr[d];
+            r %= ostr[d];
+            in_idx[d] = idx[d] + begin[d];
+        }
+        auto off = std::inner_product(
+            in_idx.begin(), in_idx.end(), istr.begin(), std::size_t(0));
+        out.data()[i] = data.data()[off];
+    }
+    return out;
 }
 
 // --------------------------------------
@@ -116,7 +221,12 @@ NDArray<T> trim_signal(const NDArray<T>& data,
 // --------------------------------------
 template<typename T>
 NDArray<T> add_nd(const NDArray<T>& A, const NDArray<T>& B) {
-    // ... (原有实现保持不变) ...
+    if (A.shape() != B.shape())
+        throw std::invalid_argument("Shapes must match for add");
+    NDArray<T> out(A.shape());
+    for (std::size_t i = 0; i < A.size(); ++i)
+        out.data()[i] = A.data()[i] + B.data()[i];
+    return out;
 }
 
 // --------------------------------------
