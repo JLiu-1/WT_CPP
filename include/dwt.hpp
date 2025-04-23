@@ -113,6 +113,19 @@ NDArray<T> convolve_nd(const NDArray<T>& data,
     return out;
 }
 
+template<typename T>
+NDArray<T> convolve_nd(const NDArray<T>& data,
+                       const std::vector<double>& filter,
+                       int axis) {
+    // 将 double -> T
+    std::vector<T> f;
+    f.reserve(filter.size());
+    for (double v : filter) f.push_back(static_cast<T>(v));
+    // 调用已有的模板版本
+    return convolve_nd<T>(data, f, axis);
+}
+
+
 // --------------------------------------
 // downsample: 沿轴每2取1
 // --------------------------------------
