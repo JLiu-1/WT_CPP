@@ -37,12 +37,7 @@ NDArray<T> pad_signal(const NDArray<T>& data,
                       const std::string& mode,
                       int axis) {
 
-    std::cerr << "[DEBUG] pad_signal: ndim="<<ndim
-          <<", axis="<<axis
-          <<", pad_width="<<pad_width
-          <<", in shape=";
-for(auto& s:shape) std::cerr<<s<<' ';
-std::cerr<<", out total="<<out.size()<<std::endl;
+
 
     int ndim = data.ndim();
     auto shape = data.shape();
@@ -53,6 +48,15 @@ std::cerr<<", out total="<<out.size()<<std::endl;
     auto ostr = out.strides();
     auto istr = data.strides();
     std::vector<std::size_t> idx(ndim), orig(ndim);
+
+        std::cerr << "[DEBUG] pad_signal: ndim="<<ndim
+          <<", axis="<<axis
+          <<", pad_width="<<pad_width
+          <<", in shape=";
+for(auto& s:shape) std::cerr<<s<<' ';
+std::cerr<<", out total="<<out.size()<<std::endl;
+
+
     for (std::size_t i = 0; i < out.size(); ++i) {
         std::size_t r = i;
         for (int d = 0; d < ndim; ++d) {
