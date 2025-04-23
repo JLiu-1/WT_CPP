@@ -26,7 +26,7 @@ using CoeffList  = std::vector<std::variant<NDArray<T>, DetailMap<T>>>;
 #include "wavelet_registry.hpp"
 
 extern "C" {
-#include "pywt/_extensions/c/wavelets.h"
+#include "pywt_c/wavelets.h"
 }
 
 // Convert wavelet name string to (WAVELET_NAME, order)
