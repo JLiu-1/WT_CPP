@@ -5,6 +5,14 @@
 #include "ndarray.hpp"
 #include "wavelet.hpp"
 
+
+// Signal extension modes 对应 Python 的 _modes_per_axis
+inline std::vector<std::string>
+modes_per_axis(const std::string& mode, const std::vector<int>& axes) {
+    return std::vector<std::string>(axes.size(), mode);
+}
+
+
 // pad_signal, convolve_nd, downsample, upsample, trim_signal, add_nd
 // Refer to PyWavelets _extensions/_dwt.pyx
 
