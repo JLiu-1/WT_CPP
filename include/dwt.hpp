@@ -36,6 +36,14 @@ NDArray<T> pad_signal(const NDArray<T>& data,
                       int pad_width,
                       const std::string& mode,
                       int axis) {
+
+    std::cerr << "[DEBUG] pad_signal: ndim="<<ndim
+          <<", axis="<<axis
+          <<", pad_width="<<pad_width
+          <<", in shape=";
+for(auto& s:shape) std::cerr<<s<<' ';
+std::cerr<<", out total="<<out.size()<<std::endl;
+
     int ndim = data.ndim();
     auto shape = data.shape();
     if (axis < 0) axis += ndim;
@@ -238,6 +246,7 @@ inline std::pair<NDArray<T>,NDArray<T>> dwt_axis(
     const Wavelet& w,
     const std::string& mode,
     int axis) {
+    std::cout<<w.dec_len()<<std::endl;
     std::cout<<"d0"<<std::endl;
     auto p = pad_signal(data, w.dec_len()-1, mode, axis);
     std::cout<<"d1"<<std::endl;
