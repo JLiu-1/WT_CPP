@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include <numeric>
-
+#include <cmath>
 #include "ndarray.hpp"
 #include "wavelet.hpp"
 #include "multilevel.hpp"
@@ -82,4 +82,9 @@ int main(int argc, char* argv[]) {
         out.close();
     }
     catch (const std::exception& ex) {
-        std::cerr << "Error: " << ex
+        std::cerr << "Error: " << ex.what() << "\n";
+        return 1;
+    }
+
+    return 0;
+}
