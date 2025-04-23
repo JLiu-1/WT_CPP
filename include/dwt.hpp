@@ -238,9 +238,13 @@ inline std::pair<NDArray<T>,NDArray<T>> dwt_axis(
     const Wavelet& w,
     const std::string& mode,
     int axis) {
+    std::cout<<"d0"<<std::endl;
     auto p = pad_signal(data, w.dec_len()-1, mode, axis);
+    std::cout<<"d1"<<std::endl;
     auto lo = convolve_nd(p, w.dec_lo(), axis);
+    std::cout<<"d2"<<std::endl;
     auto hi = convolve_nd(p, w.dec_hi(), axis);
+    std::cout<<"d3"<<std::endl;
     return std::make_pair(downsample(lo, axis),
                           downsample(hi, axis));
 }
