@@ -143,11 +143,15 @@ dwtn(const NDArray<T>& data,
         real_axes.resize(ndim);
         std::iota(real_axes.begin(), real_axes.end(), 0);
     }
+    std::cout<<"n1"<<std::endl;
     auto modes = modes_per_axis(mode, real_axes);
     auto wavelets = wavelets_per_axis(w, real_axes);
+    std::cout<<"n2"<<std::endl;
     int N = static_cast<int>(real_axes.size());
+    std::cout<<"n3 "<<N<<std::endl;
     std::vector<std::pair<std::string, NDArray<T>>> bands = {{"", data}};
     for (int i = 0; i < N; ++i) {
+        std::cout<<i<<std::endl;
         int ax = real_axes[i];
         auto md = modes[i];
         auto& wav = wavelets[i];
@@ -157,11 +161,13 @@ dwtn(const NDArray<T>& data,
             next.emplace_back(pr.first + 'a', std::move(cA));
             next.emplace_back(pr.first + 'd', std::move(cD));
         }
+         std::cout<<"n4"<<std::endl;
         bands.swap(next);
     }
     std::map<std::string, NDArray<T>> result;
     for (auto& p : bands)
         result.emplace(p.first, std::move(p.second));
+     std::cout<<"n5"<<std::endl;
     return result;
 }
 
@@ -222,9 +228,10 @@ wavedecn(const NDArray<T>& data,
     std::cout<<"p3"<<std::endl;
     int max_level = (level < 0 ? static_cast<int>(axes_shapes.size()) : level);
     std::vector<DetailMap<T>> details;
-    std::cout<<"p4"<<std::endl;
+    std::cout<<max_level<<std::endl;
     NDArray<T> approx = data;
     for (int i = 0; i < max_level; ++i) {
+        std::cout<<i<<std::endl;
         auto coeffs = dwtn(approx, w, mode, real_axes);
         std::string akey(N, 'a');
         approx = coeffs.at(akey);
