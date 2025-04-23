@@ -10,6 +10,10 @@
 template<typename T>
 class NDArray {
 public:
+
+    NDArray() : ndim_(0), total_size_(0) {}
+
+    
     explicit NDArray(const std::vector<std::size_t>& shape)
         : shape_(shape) {
         ndim_ = shape_.size();
