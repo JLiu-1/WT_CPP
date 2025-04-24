@@ -413,8 +413,10 @@ inline WaveCoeffs<T> wavedecn_simple(const NDArray<T>& data,
         size_t m = *std::min_element(wc.original_shape.begin(), wc.original_shape.end());
         level = int(dwt_max_level(m, sym13::L));
     }
+    std::cout<<level<<std::endl;
     NDArray<T> a = data;
     for (int lev = 0; lev < level; ++lev) {
+         std::cout<<lev<<std::endl;
         std::map<std::string,NDArray<T>> cur;
         cur[""] = a;
         for (int ax = 0; ax < D; ++ax) {
