@@ -19,7 +19,7 @@ template<typename U>
         if (d == 0) throw std::runtime_error("Invalid shape dimension = 0");
         count *= d;
     }
-    sym13::NDArray<U> arr(shape);
+    NDArray<U> arr(shape);
     // 直接读取 count 个 U
     in.read(reinterpret_cast<char*>(arr.data()), count * sizeof(U));
     if (!in) throw std::runtime_error("Failed to read enough data from: " + fname);
