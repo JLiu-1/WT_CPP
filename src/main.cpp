@@ -34,6 +34,93 @@ void save_ndarray_raw(const std::string& fname, const U* data, size_t count) {
     out.write(reinterpret_cast<const char*>(data), count * sizeof(U));
 }
 
+template<typename U>
+void write_bytes(std::ofstream& out, const U* data, size_t count) {
+    out.write(reinterpret_cast<const char*>(data), count * sizeof(U));
+}
+
+// 二进制保存 NDArray<T>：
+// [uint32 ndim]
+// [uint64 dims[0] ... dims[ndim-1]]
+// [T data[0] ... data[size-1]]
+template<typename T>
+void save_ndarray_binary(const std::string& fname, const NDArray<T>& arr) {
+    std::ofstream out(fname, std::ios::binary);
+    if (!out) throw std::runtime_error("无法打开文件: " + fname);
+    uint32_t ndim = static_cast<uint32_t>(arr.ndim());
+    write_bytes(out, &ndim, 1);
+    // dims
+    for (size_t d : arr.shape()) {
+        uint64_t dd = static_cast<uint64_t>(d);
+        write_bytes(out, &dd, 1);
+    }
+    // raw data
+    write_bytes(out, arr.data(), arr.size());
+}
+
+// 二进制保存 WaveCoeffs<T>
+// 格式：
+//   uint32_t num_levels
+//   for each level:
+//     uint32_t num_entries
+//     for each entry:
+//       uint32_t key_len
+//       char     key[key_len]
+//       uint32_t ndim
+//       uint64_t dims[ndim]
+//       T        data[size]
+//   // 最后写最高层 cA：
+//   uint32_t marker = 0xFFFFFFFF
+//   uint32_t ndim_cA
+//   uint64_t dims_cA[...]
+//   T        data_cA[...]
+template<typename T>
+void save_coeffs_binary(const std::string& fname, const WaveCoeffs<T>& wc) {
+    std::ofstream out(fname, std::ios::binary);
+    if (!out) throw std::runtime_error("无法打开文件: " + fname);
+
+    // levels
+    uint32_t num_levels = static_cast<uint32_t>(wc.details.size());
+    write_bytes(out, &num_levels, 1);
+
+    for (auto const& level_map : wc.details) {
+        uint32_t num_entries = static_cast<uint32_t>(level_map.size());
+        write_bytes(out, &num_entries, 1);
+        for (auto const& kv : level_map) {
+            const std::string& key = kv.first;
+            auto const& arr = kv.second;
+            // key
+            uint32_t key_len = static_cast<uint32_t>(key.size());
+            write_bytes(out, &key_len, 1);
+            out.write(key.data(), key_len);
+            // dims
+            uint32_t ndim = static_cast<uint32_t>(arr.ndim());
+            write_bytes(out, &ndim, 1);
+            for (size_t d : arr.shape()) {
+                uint64_t dd = static_cast<uint64_t>(d);
+                write_bytes(out, &dd, 1);
+            }
+            // data
+            write_bytes(out, arr.data(), arr.size());
+        }
+    }
+
+    // cA 层
+    uint32_t marker = 0xFFFFFFFF;
+    write_bytes(out, &marker, 1);
+
+    auto const& a = wc.cA;
+    uint32_t ndim = static_cast<uint32_t>(a.ndim());
+    write_bytes(out, &ndim, 1);
+    for (size_t d : a.shape()) {
+        uint64_t dd = static_cast<uint64_t>(d);
+        write_bytes(out, &dd, 1);
+    }
+    write_bytes(out, a.data(), a.size());
+}
+
+
+
 int main(int argc, char* argv[]) {
     if (argc != 7) {
         std::cerr << "Usage: " << argv[0]
