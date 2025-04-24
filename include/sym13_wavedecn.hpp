@@ -143,7 +143,7 @@ public:
     }
 
     /// 从一个扁平的 “行向量矩阵” 恢复成多维。要求 data.size()==prod(shape[0..D-2]) 且 每行长度==shape.back()
-    static NDArray<T> fromFlattened(
+     static NDArray<T> fromFlattened(
         const std::vector<std::vector<T>>& mat,
         const std::vector<size_t>& shape)
     {
@@ -151,17 +151,19 @@ public:
         if (D < 1) throw std::invalid_argument("fromFlattened: need at least 1D");
         size_t rows = 1;
         for (int i = 0; i < D-1; ++i) rows *= shape[i];
-        size_t cols = shape.back();
+        size_t cols = shape[D-1];
         if (mat.size() != rows)
             throw std::invalid_argument("fromFlattened: row count mismatch");
         NDArray<T> out(shape);
+        T* ptr = out.data();  // ===> 正确获取底层指针
         for (size_t r = 0; r < rows; ++r) {
             if (mat[r].size() != cols)
                 throw std::invalid_argument("fromFlattened: col count mismatch");
+            // 将第 r 行拷到 ptr + r*cols
             std::copy(
                 mat[r].begin(),
                 mat[r].end(),
-                out.data() + r*cols
+                ptr + r*cols
             );
         }
         return out;
