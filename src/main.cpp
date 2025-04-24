@@ -145,6 +145,7 @@ int main(int argc, char* argv[]) {
         std::string token;
         while (std::getline(ss, token, ',')) {
             shape.push_back(static_cast<size_t>(std::stoul(token)));
+            std::cout<<"1"<<std::endl;
         }
     }
 
