@@ -51,13 +51,7 @@ static const std::array<double, L> rec_hi = []{
 
 } // namespace sym13
 
-// WaveCoeffs 模板
-template<typename T>
-struct WaveCoeffs {
-    NDArray<T> cA;
-    std::vector<std::map<std::string,NDArray<T>>> details;
-    std::vector<size_t> original_shape;
-};
+
 
 template<typename T>
 class NDArray {
@@ -100,7 +94,13 @@ private:
     std::vector<T> data_;
 };
 
-
+// WaveCoeffs 模板
+template<typename T>
+struct WaveCoeffs {
+    NDArray<T> cA;
+    std::vector<std::map<std::string,NDArray<T>>> details;
+    std::vector<size_t> original_shape;
+};
 
 // dwt_max_level 简单实现
 inline size_t dwt_max_level(size_t data_len, size_t filter_len) {

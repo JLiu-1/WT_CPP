@@ -69,13 +69,13 @@ int main(int argc, char* argv[]) {
                 throw std::runtime_error("Input shape mismatch");
 
             // 正向 DWT 分解
-            auto coeffs = sym13::wavedecn_simple<float>(data_f, mode);
+            auto coeffs = wavedecn_simple<float>(data_f, mode);
 
             // 保存系数（包含 header）
             save_coeffs_binary(fwd_file, coeffs);
 
             // 逆向重构
-            auto rec = sym13::waverecn_simple<float>(coeffs, mode);
+            auto rec = waverecn_simple<float>(coeffs, mode);
 
             // 打印重构后的维度
             std::cout << "Reconstructed shape:";
@@ -91,9 +91,9 @@ int main(int argc, char* argv[]) {
             if (data_d.shape() != shape)
                 throw std::runtime_error("Input shape mismatch");
 
-            auto coeffs = sym13::wavedecn_simple<double>(data_d, mode);
+            auto coeffs = wavedecn_simple<double>(data_d, mode);
             save_coeffs_binary(fwd_file, coeffs);
-            auto rec = sym13::waverecn_simple<double>(coeffs, mode);
+            auto rec = waverecn_simple<double>(coeffs, mode);
 
             std::cout << "Reconstructed shape:";
             for (auto d : rec.shape()) std::cout << ' ' << d;
