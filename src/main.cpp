@@ -151,19 +151,20 @@ int main(int argc, char* argv[]) {
         if (dtype == "float") {
             // 读入原始 float32 数据
             auto data_f = load_ndarray_binary<float>(in_file);
+            std::cout<<"p1"<<std::endl;
             // 验证维度是否一致
             if (data_f.shape() != shape)
                 throw std::runtime_error("Input shape mismatch");
-
+            std::cout<<"p2"<<std::endl;
             // 正向 DWT 分解
             auto coeffs = wavedecn_simple<float>(data_f, mode);
-
+            std::cout<<"p3"<<std::endl;
             // 保存系数（包含 header）
             save_coeffs_binary(fwd_file, coeffs);
-
+            std::cout<<"p4"<<std::endl;
             // 逆向重构
             auto rec = waverecn_simple<float>(coeffs, mode);
-
+            std::cout<<"p5"<<std::endl;
             // 打印重构后的维度
             std::cout << "Reconstructed shape:";
             for (auto d : rec.shape()) std::cout << ' ' << d;
