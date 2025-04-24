@@ -9,7 +9,7 @@
 
 // 从 binary 文件读取带 header 的 NDArray<T>
 template<typename U>
-sym13::NDArray<U> load_ndarray_binary(const std::string& fname,
+ NDArray<U> load_ndarray_binary(const std::string& fname,
                                       const std::vector<size_t>& shape) {
     std::ifstream in(fname, std::ios::binary);
     if (!in) throw std::runtime_error("Cannot open file: " + fname);
