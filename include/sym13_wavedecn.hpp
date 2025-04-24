@@ -161,7 +161,7 @@ public:
             std::copy(
                 mat[r].begin(),
                 mat[r].end(),
-                out.data_ + r*cols
+                out.data() + r*cols
             );
         }
         return out;
