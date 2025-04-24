@@ -9,29 +9,29 @@
 
 // 从 binary 文件读取带 header 的 NDArray<T>
 template<typename U>
-NDArray<U> load_ndarray_binary(const std::string& fname) {
+sym13::NDArray<U> load_ndarray_binary(const std::string& fname,
+                                      const std::vector<size_t>& shape) {
     std::ifstream in(fname, std::ios::binary);
     if (!in) throw std::runtime_error("Cannot open file: " + fname);
-    // header: uint32 ndim, followed by ndim x uint64 dims
-    uint32_t ndim;
-    in.read(reinterpret_cast<char*>(&ndim), sizeof(ndim));
-    std::vector<size_t> shape(ndim);
-    for (uint32_t i = 0; i < ndim; ++i) {
-        uint64_t d;
-        in.read(reinterpret_cast<char*>(&d), sizeof(d));
-        shape[i] = static_cast<size_t>(d);
+    // 计算元素总数
+    size_t count = 1;
+    for (auto d : shape) {
+        if (d == 0) throw std::runtime_error("Invalid shape dimension = 0");
+        count *= d;
     }
-    NDArray<U> arr(shape);
-    in.read(reinterpret_cast<char*>(arr.data()), arr.size() * sizeof(U));
+    sym13::NDArray<U> arr(shape);
+    // 直接读取 count 个 U
+    in.read(reinterpret_cast<char*>(arr.data()), count * sizeof(U));
+    if (!in) throw std::runtime_error("Failed to read enough data from: " + fname);
     return arr;
 }
 
-// 仅把原始数据写入，不写维度等 header
 template<typename U>
 void save_ndarray_raw(const std::string& fname, const U* data, size_t count) {
     std::ofstream out(fname, std::ios::binary);
     if (!out) throw std::runtime_error("Cannot open file: " + fname);
     out.write(reinterpret_cast<const char*>(data), count * sizeof(U));
+    if (!out) throw std::runtime_error("Failed to write data to: " + fname);
 }
 
 template<typename U>
@@ -138,21 +138,19 @@ int main(int argc, char* argv[]) {
     std::string inv_file  = argv[6];
 
     // 解析维度字符串 "64,64,32" → vector<size_t>{64,64,32}
-    std::cout<<dim_str<<std::endl;
     std::vector<size_t> shape;
     {
         std::stringstream ss(dim_str);
         std::string token;
         while (std::getline(ss, token, ',')) {
             shape.push_back(static_cast<size_t>(std::stoul(token)));
-            std::cout<<"1"<<std::endl;
         }
     }
 
     try {
         if (dtype == "float") {
             // 读入原始 float32 数据
-            auto data_f = load_ndarray_binary<float>(in_file);
+             auto data_f = load_ndarray_binary<float>(in_file, shape);
             std::cout<<"p1"<<std::endl;
             // 验证维度是否一致
             if (data_f.shape() != shape)
@@ -177,7 +175,7 @@ int main(int argc, char* argv[]) {
         }
         else if (dtype == "double") {
             // 读入原始 float64 数据
-            auto data_d = load_ndarray_binary<double>(in_file);
+           auto data_d = load_ndarray_binary<double>(in_file, shape);
             if (data_d.shape() != shape)
                 throw std::runtime_error("Input shape mismatch");
 
