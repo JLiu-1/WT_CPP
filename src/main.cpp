@@ -138,6 +138,7 @@ int main(int argc, char* argv[]) {
     std::string inv_file  = argv[6];
 
     // 解析维度字符串 "64,64,32" → vector<size_t>{64,64,32}
+    std::cout<<dim_str<<std::endl;
     std::vector<size_t> shape;
     {
         std::stringstream ss(dim_str);
