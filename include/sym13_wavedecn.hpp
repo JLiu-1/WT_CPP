@@ -446,24 +446,63 @@ inline WaveCoeffs<T> wavedecn_simple(const NDArray<T>& data,
 // --------------------------------------
 template<typename T>
 inline NDArray<T> waverecn_simple(const WaveCoeffs<T>& wc,
-                                  const std::string& mode = "symmetric")
+                                  const std::string& mode="symmetric")
 {
+    // 从 cA 开始
     NDArray<T> a = wc.cA;
-    int D = (int)a.ndim();
-    for (int lev = int(wc.details.size()) - 1; lev >= 0; --lev) {
-        auto const& det = wc.details[lev];
-        for (int ax = 0; ax < D; ++ax) {
-            // 构造 key
-            std::string keyA(D,'a'), keyD(D,'a');
-            keyA[ax] = 'a';
-            keyD[ax] = 'd';
-            auto cA = det.at(keyA);
-            auto cD = det.at(keyD);
-            NDArray<T> rec;
-            idwt_axis(cA, cD, int(wc.original_shape[ax]), mode, rec);
-            a = std::move(rec);
+    int ndim = int(a.ndim());
+
+    // 每一级反向重构
+    for (int lvl = int(wc.details.size()) - 1; lvl >= 0; --lvl) {
+        // 拷贝出当前级的 detail map
+        auto cur = wc.details[lvl]; // key 长度 == ndim
+
+        // 把 approximation cA 补进来，key="aaa...a"
+        std::string keyA(ndim, 'a');
+        cur.emplace(keyA, a);
+
+        // 对每一个轴，逐一做 1D IDWT，将 key 的长度减 1
+        for (int ax = 0; ax < ndim; ++ax) {
+            std::map<std::string, NDArray<T>> next;
+            for (auto& kv : cur) {
+                // 只对当前 key 中在 ax 处为 'a' 的条目做重构
+                const auto& key = kv.first;
+                if (key[ax] != 'a') continue;
+
+                // 构造对应的 detail key，将第 ax 位改为 'd'
+                auto keyD = key;
+                keyD[ax] = 'd';
+
+                auto itD = cur.find(keyD);
+                if (itD == cur.end()) {
+                    throw std::runtime_error("Missing detail subband for key " + keyD);
+                }
+
+                // 进行 1D 重构
+                NDArray<T> rec;
+                // idwt_axis: (cA, cD, axis length, mode, out)
+                idwt_axis<T>(
+                  /*cA*/  kv.second,
+                  /*cD*/  itD->second,
+                  /*axis_len*/ int(wc.original_shape[ax]),
+                  /*mode*/    mode,
+                  /*out*/     rec
+                );
+
+                // 新的 key，要把这一维度字母删掉，剩下 ndim-1 长度
+                std::string newkey = key.substr(0, ax) + key.substr(ax+1);
+                next.emplace(std::move(newkey), std::move(rec));
+            }
+            cur.swap(next);
         }
+
+        // 此时 cur 里应该只有一个条目，key==""，对应完整重构后的 data
+        if (cur.size() != 1 || cur.begin()->first != "") {
+            throw std::runtime_error("waverecn_simple: unexpected map size after level " + std::to_string(lvl));
+        }
+        a = std::move(cur.begin()->second);
     }
+
     return a;
 }
 
