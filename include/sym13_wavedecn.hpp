@@ -59,10 +59,10 @@ static const std::array<double, L> rec_hi = []{
 template<typename T>
 class NDArray {
 public:
-    /// 默认构造（支持 WaveCoeffs 默认构造时的 cA）
-    NDArray() noexcept : shape_(), strides_(), size_(0), data_() {}
+    // **1. 默认构造：必须初始化 size_=0，否则 WaveCoeffs 默认构造时 cA 会无效**
+    NDArray() : shape_(), strides_(), size_(0), data_() {}
 
-    /// 用 shape 构造一个全 0 数组
+    // 构造指定形状的数组，数据初始化为 0
     explicit NDArray(const std::vector<size_t>& shape)
         : shape_(shape)
     {
@@ -72,78 +72,16 @@ public:
             size_ *= s;
         }
         data_.assign(size_, T{});
-        // 计算 row-major strides
         strides_.resize(shape_.size());
-        size_t st = 1;
+        size_t stride = 1;
         for (int i = (int)shape_.size() - 1; i >= 0; --i) {
-            strides_[i] = st;
-            st *= shape_[i];
+            strides_[i] = stride;
+            stride *= shape_[i];
         }
     }
 
-    // 元素数据指针
-    T*       data()       { return data_.data(); }
-    const T* data() const { return data_.data(); }
-
-    // 属性
-    const std::vector<size_t>& shape()   const { return shape_; }
-    const std::vector<size_t>& strides() const { return strides_; }
-    size_t ndim() const { return shape_.size(); }
-    size_t size()  const { return size_; }
-
-    // --------------- 以下都是必须自己实现的工具接口 ---------------
-
-    /// 按 perm 重排各个维度。例如 perm = {1,0,2} 就会把第 0 轴和第 1 轴对调。
-    NDArray<T> moveAxis(const std::vector<int>& perm) const {
-        assert(perm.size() == shape_.size());
-        int D = (int)shape_.size();
-        // 计算 inverse permutation
-        std::vector<int> inv(D);
-        for (int i = 0; i < D; ++i) inv[perm[i]] = i;
-        // 新 shape
-        std::vector<size_t> new_shape(D);
-        for (int i = 0; i < D; ++i)
-            new_shape[i] = shape_[perm[i]];
-        NDArray<T> out(new_shape);
-        auto& os = out.strides_;
-        // 我们需要原来的 strides_，这里用 data() 和 strides()：
-        const auto& ins = strides_;
-        // 对每个线性索引，解多维坐标然后映射
-        std::vector<size_t> idx_out(D), idx_in(D);
-        for (size_t lin = 0; lin < out.size_; ++lin) {
-            size_t r = lin;
-            for (int d = 0; d < D; ++d) {
-                idx_out[d] = r / os[d];
-                r %= os[d];
-            }
-            // out 的第 d 维对应 in 的 perm[d]
-            for (int d = 0; d < D; ++d)
-                idx_in[perm[d]] = idx_out[d];
-            // 计算原始偏移
-            size_t off = 0;
-            for (int d = 0; d < D; ++d)
-                off += idx_in[d] * ins[d];
-            out.data_[lin] = data_[off];
-        }
-        return out;
-    }
-
-    /// 只改变 shape / strides，不改数据布局（扁平存储）。新 shape 的乘积必须等于 size().
-    NDArray<T> reshape(const std::vector<size_t>& new_shape) const {
-        size_t new_size = 1;
-        for (auto s : new_shape) {
-            if (s == 0) throw std::invalid_argument("reshape: zero dimension");
-            new_size *= s;
-        }
-        if (new_size != size_)
-            throw std::invalid_argument("reshape: total size mismatch");
-        NDArray<T> out(new_shape);
-        std::copy(data_.begin(), data_.end(), out.data_);
-        return out;
-    }
-
-    /// 从一个扁平的 “行向量矩阵” 恢复成多维。要求 data.size()==prod(shape[0..D-2]) 且 每行长度==shape.back()
-     static NDArray<T> fromFlattened(
+    // **2. fromFlattened：不要再直接用 data_，而要用 data() 返回 T***
+    static NDArray<T> fromFlattened(
         const std::vector<std::vector<T>>& mat,
         const std::vector<size_t>& shape)
     {
@@ -155,27 +93,80 @@ public:
         if (mat.size() != rows)
             throw std::invalid_argument("fromFlattened: row count mismatch");
         NDArray<T> out(shape);
-        T* ptr = out.data();  // ===> 正确获取底层指针
+        T* ptr = out.data();            // <-- T* 指针
         for (size_t r = 0; r < rows; ++r) {
             if (mat[r].size() != cols)
                 throw std::invalid_argument("fromFlattened: col count mismatch");
-            // 将第 r 行拷到 ptr + r*cols
             std::copy(
                 mat[r].begin(),
                 mat[r].end(),
-                ptr + r*cols
+                ptr + r*cols        // <-- 用 ptr，而不是 out.data_
             );
         }
         return out;
     }
 
-private:
-    std::vector<size_t> shape_, strides_;
-    size_t size_;
-    std::vector<T>     data_;
+    // **3. reshape：同样不要传整个 vector，当 dest 迭代器，要用 data()**
+    NDArray<T> reshape(const std::vector<size_t>& new_shape) const {
+        size_t new_size = 1;
+        for (auto s : new_shape) {
+            if (s == 0) throw std::invalid_argument("reshape: zero dimension");
+            new_size *= s;
+        }
+        if (new_size != size_)
+            throw std::invalid_argument("reshape: total size mismatch");
+        NDArray<T> out(new_shape);
+        std::copy(
+            data_.begin(),
+            data_.end(),
+            out.data()    // <-- T* dest
+        );
+        return out;
+    }
 
-    // 让 moveAxis/reshape/fromFlattened 能直接访问 data_
-    friend class NDArray<T>;
+    // **4. moveAxis：将某个轴 permute 到末尾之类的操作**
+    NDArray<T> moveAxis(const std::vector<int>& perm) const {
+        int D = (int)shape_.size();
+        if ((int)perm.size() != D) throw std::invalid_argument("moveAxis: perm size mismatch");
+        // 计算 new shape
+        std::vector<size_t> new_shape(D);
+        for (int i = 0; i < D; ++i) new_shape[i] = shape_[perm[i]];
+        NDArray<T> out(new_shape);
+        // 计算 new strides
+        const auto& this_strides = strides_;
+        auto out_strides = out.strides();
+        std::vector<size_t> idx(D), old_idx(D);
+        size_t total = out.size();
+        for (size_t lin = 0; lin < total; ++lin) {
+            size_t rem = lin;
+            for (int d = 0; d < D; ++d) {
+                idx[d] = rem / out_strides[d];
+                rem %= out_strides[d];
+            }
+            for (int d = 0; d < D; ++d) {
+                old_idx[perm[d]] = idx[d];
+            }
+            // 计算在 this->data_ 上的偏移
+            size_t off = 0;
+            for (int d = 0; d < D; ++d) off += old_idx[d] * this_strides[d];
+            out.data()[lin] = data_[off];
+        }
+        return out;
+    }
+
+    // 基本访问
+    T* data() { return data_.data(); }
+    const T* data() const { return data_.data(); }
+    const std::vector<size_t>& shape()   const { return shape_; }
+    const std::vector<size_t>& strides() const { return strides_; }
+    size_t ndim() const { return shape_.size(); }
+    size_t size()  const { return size_; }
+
+private:
+    std::vector<size_t> shape_;
+    std::vector<size_t> strides_;
+    size_t size_;
+    std::vector<T> data_;
 };
 
 
@@ -184,6 +175,9 @@ private:
 // -------------------------
 template<typename T>
 struct WaveCoeffs {
+    // **5. 默认构造：要给 cA 一个合法的 shape**
+    WaveCoeffs() : cA(std::vector<size_t>{1}), details(), original_shape() {}
+
     NDArray<T> cA;
     std::vector<std::map<std::string,NDArray<T>>> details;
     std::vector<size_t> original_shape;
